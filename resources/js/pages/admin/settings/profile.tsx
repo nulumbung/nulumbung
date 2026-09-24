@@ -1,0 +1,261 @@
+import { Form, Head, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
+import { useState } from 'react';
+import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import DeleteUser from '@/components/delete-user';
+import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { edit } from '@/routes/profile';
+import { useInitials } from '@/hooks/use-initials';
+import { Camera } from 'lucide-react';
+import type { Auth } from '@/types';
+import { send } from '@/routes/verification';
+
+type PageProps = {
+    auth: Auth;
+};
+
+export default function Profile({
+    mustVerifyEmail,
+    status,
+}: {
+    mustVerifyEmail: boolean;
+    status?: string;
+}) {
+    const { auth } = usePage<PageProps>().props;
+    const getInitials = useInitials();
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+    return (
+        <>
+            <Head title="Profile settings" />
+
+            <h1 className="sr-only">Profile settings</h1>
+
+            <div className="space-y-6">
+                <Heading
+                    variant="small"
+                    title="Profile"
+                    description="Update your avatar, name, WhatsApp and address"
+                />
+
+                <Form
+                    {...ProfileController.update.form()}
+                    options={{
+                        preserveScroll: true,
+                    }}
+                    className="space-y-6"
+                >
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-2">
+                                <div className="flex justify-center">
+                                    <label
+                                        htmlFor="avatar"
+                                        className="group relative cursor-pointer"
+                                    >
+                                        <Avatar className="size-24 overflow-hidden rounded-full bg-neutral-200 object-cover ring-1 ring-border transition-all duration-300 group-hover:ring-2 group-hover:ring-ring dark:bg-neutral-700">
+                                            <AvatarImage
+                                                src={
+                                                    avatarPreview ??
+                                                    auth.user.avatar
+                                                }
+                                                alt={auth.user.name}
+                                                className="object-cover"
+                                            />
+                                            <AvatarFallback className="rounded-full bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                                {getInitials(auth.user.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
+
+                                        <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                                            <Camera className="size-8 text-white" />
+                                        </span>
+                                    </label>
+
+                                    <Input
+                                        id="avatar"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        className="sr-only"
+                                        name="avatar"
+                                        required={false}
+                                        onChange={(event) => {
+                                            const file =
+                                                event.target.files?.[0];
+
+                                            if (file) {
+                                                setAvatarPreview(
+                                                    URL.createObjectURL(file),
+                                                );
+                                            }
+                                        }}
+                                    />
+                                </div>
+
+                                <p className="text-center text-sm text-muted-foreground">
+                                    Click on the avatar to change your photo
+                                </p>
+
+                                <InputError
+                                    className="mt-2 text-center"
+                                    message={errors.avatar}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Name</Label>
+
+                                <Input
+                                    id="name"
+                                    className="mt-1 block w-full"
+                                    defaultValue={auth.user.name}
+                                    name="name"
+                                    required
+                                    autoComplete="name"
+                                    placeholder="Full name"
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.name}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="email">Email address</Label>
+
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    className="mt-1 block w-full"
+                                    defaultValue={auth.user.email}
+                                    name="email"
+                                    required
+                                    readOnly
+                                    autoComplete="username"
+                                    placeholder="Email address"
+                                />
+
+                                <p className="text-sm text-muted-foreground">
+                                    Your email address cannot be changed.
+                                </p>
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.email}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="whatsapp">WhatsApp number</Label>
+
+                                <Input
+                                    id="whatsapp"
+                                    type="tel"
+                                    className="mt-1 block w-full"
+                                    defaultValue={auth.user.whatsapp ?? ''}
+                                    name="whatsapp"
+                                    autoComplete="tel"
+                                    placeholder="+6281234567890"
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.whatsapp}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="address">Full address</Label>
+
+                                <Input
+                                    id="address"
+                                    type="text"
+                                    name="address"
+                                    className="mt-1 block w-full"
+                                    defaultValue={auth.user.address ?? ''}
+                                    autoComplete="street-address"
+                                    placeholder="Street, city, postal code"
+                                />
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.address}
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="role">Role</Label>
+
+                                <Input
+                                    id="role"
+                                    type="text"
+                                    className="mt-1 block w-full"
+                                    defaultValue={
+                                        auth.user.role_names?.join(', ') ?? '-'
+                                    }
+                                    readOnly
+                                />
+
+                                <p className="text-sm text-muted-foreground">
+                                    Your role is assigned by an administrator
+                                    and cannot be changed.
+                                </p>
+                            </div>
+
+                            {mustVerifyEmail &&
+                                auth.user.email_verified_at === null && (
+                                    <div>
+                                        <p className="-mt-4 text-sm text-muted-foreground">
+                                            Your email address is unverified.{' '}
+                                            <Link
+                                                href={send()}
+                                                as="button"
+                                                className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
+                                            >
+                                                Click here to re-send the
+                                                verification email.
+                                            </Link>
+                                        </p>
+
+                                        {status ===
+                                            'verification-link-sent' && (
+                                            <div className="mt-2 text-sm font-medium text-green-600">
+                                                A new verification link has been
+                                                sent to your email address.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                            <div className="flex items-center gap-4">
+                                <Button
+                                    disabled={processing}
+                                    data-test="update-profile-button"
+                                >
+                                    Save
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </Form>
+            </div>
+
+            <DeleteUser />
+        </>
+    );
+}
+
+Profile.layout = {
+    breadcrumbs: [
+        {
+            title: 'Profile settings',
+            href: edit(),
+        },
+    ],
+};
